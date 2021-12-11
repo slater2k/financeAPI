@@ -13,14 +13,14 @@ class YahooFinanceApiClientTest extends DatabaseDependantTestCase
     public function the_yahoo_finance_api_client_returns_the_correct_data()
     {
         // setup
-        // need api client
         $yahooFinanceClient = self::$kernel->getContainer()->get('yahoo-finance-api-client');
 
         // do something
-        $response = $yahooFinanceClient->fetchStockProfile('ETH-USD', 'US'); // symbol, region
-        $stockProfile = json_decode($response['content']);
+        $response = $yahooFinanceClient->fetchStockProfile('AMZN', 'US'); // symbol, region
+        $stockProfile = json_decode($response->getContent());
 
         // asserts
+        $this->assertEquals(200, $response->getStatusCode());
         $this->assertSame('AMZN', $stockProfile->symbol);
         $this->assertSame('Amazon.com, Inc.', $stockProfile->shortName);
         $this->assertSame('US', $stockProfile->region);

@@ -2,9 +2,10 @@
 
 namespace App\Http;
 
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-class YahooFinanceApiClient
+class YahooFinanceApiClient implements FinanceApiClientInterface
 {
     private $httpClient;
     private $rapidApiKey;
@@ -18,7 +19,13 @@ class YahooFinanceApiClient
         $this->rapidApiKey = $rapidApiKey;
     }
 
-    public function fetchStockProfile($symbols, $region): array
+    /**
+     * @param $symbols
+     * @param $region
+     * @return JsonResponse
+     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+     */
+    public function fetchStockProfile($symbols, $region): JsonResponse
     {
         $response = $this->httpClient->request('GET', self::URL, [
             'query' => [
@@ -31,24 +38,27 @@ class YahooFinanceApiClient
             ],
         ]);
 
-        $stockProfile = json_decode($response->getContent())->price;
-        dd($stockProfile);
+        if($response->getStatusCode() !== 200) {
+            return New JsonResponse('Finance Api Client Error', 400);
+        }
+
+        $stockProfile = json_decode($response->getContent())->quoteResponse->result[0] ?? false;
+
+        if(!$stockProfile) {
+            trigger_error('No results founds', E_USER_ERROR);
+        }
 
         $stockProfileAsArray = [
-            'symbol' => 'AMZN',
-            'shortName' => 'Amazon.com, Inc.',
-            'region' => 'US',
-            'exchangeName' => 'NasdaqGS',
-            'currency' => 'USD',
-            'price' => 100.50,
-            'previousClose' => 110.20,
-            'priceChange' => - 9.70,
+            'symbol' => $stockProfile->symbol,
+            'shortName' => $stockProfile->shortName,
+            'region' => $region,
+            'exchangeName' => $stockProfile->fullExchangeName,
+            'currency' => $stockProfile->currency,
+            'price' => $stockProfile->regularMarketPrice,
+            'previousClose' => $stockProfile->regularMarketPreviousClose,
+            'priceChange' => $stockProfile->regularMarketPrice - $stockProfile->regularMarketPreviousClose,
         ];
 
-        return [
-            'statusCode' => 200,
-            'content' => json_encode()
-        ];
-
+        return new JsonResponse($stockProfileAsArray, 200);
     }
 }
